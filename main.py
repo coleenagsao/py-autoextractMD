@@ -86,55 +86,16 @@ def find_value_block(key_block, value_map):
                 value_block = value_map[value_id]
     return value_block
 
-def get_rows_columns_map(table_result, blocks_map):
-    rows = {}
-    for relationship in table_result['Relationships']:
-        if relationship['Type'] == 'CHILD':
-            for child_id in relationship['Ids']:
-                cell = blocks_map[child_id]
-                if cell['BlockType'] == 'CELL':
-                    row_index = cell['RowIndex']
-                    col_index = cell['ColumnIndex']
-                    if row_index not in rows:
-                        # create new row
-                        rows[row_index] = {}
-                        
-                    # get the text value
-                    rows[row_index][col_index] = get_text(cell, blocks_map)
-    return rows
-
-def generate_form_csv(keys, values, form, directory):     
-    filename = directory + "\\" + form.split("\\")[-1].split(".jpg")[0] + "_form.csv"
-
-    data = np.array([p for p in zip(keys, values)], dtype=object)
-    np.savetxt(filename, data, delimiter=',', fmt='%s')
-   
-def generate_table_csv(table_result, blocks_map, table_index):
-    rows = get_rows_columns_map(table_result, blocks_map)
-
-    table_id = 'Table_' + str(table_index)
-    
-    # get cells
-    csv = 'Table: {0}\n\n'.format(table_id)
-
-    for row_index, cols in rows.items():
-        for col_index, text in cols.items():
-            col_indices = len(cols.items())
-            csv += '{}'.format(text) + ","
-        csv += '\n'
-        
-    csv += '\n\n\n'
-    return csv
-
 def clear_data():
     tv1.delete(*tv1.get_children())
     return None
 
 # set up window
 root = Tk()                                         # create tkinter root window
-root.title('AutoExtract MD')
+root.title('AutoExtractMD')
 root.geometry("700x600") 
 root.pack_propagate(False)                          # set window's h and w
+root.wm_iconbitmap('logo.ico')
 
 frame1 = LabelFrame(root, text="Data")
 frame1.place(height=270, width=700)
