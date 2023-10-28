@@ -1,54 +1,57 @@
 import boto3
+from decouple import config     # for .env
+
 import os
 from collections import defaultdict
 from collections import Counter
-from decouple import config     # for .env
 import numpy as np
-from tkinter import Tk
-from tkinter import StringVar
-from tkinter.filedialog import askdirectory
-from tkinter.ttk import Label
 import pandas as pd
 import re
+from IPython.display import display, HTML
 
-def get_map(file_name):
-    # add status indicator for processing
-    print("[ONGOING]" + form.split("\\")[-1].split(".jpg")[0])
+from tkinter import Tk
+from tkinter.filedialog import askdirectory
+from tkinter.ttk import Label
 
-    # save aws_access_key_id and aws_secret_access_key from .env
-    key_id = config('aws_access_key_id', default='')
-    access_key = config('aws_secret_access_key', default='')
-
-    # define client for textract
-    client = boto3.client('textract', region_name='us-east-1',aws_access_key_id=key_id, aws_secret_access_key=access_key)
-
-    # open image and convert to image byte
-    with open(file_name, 'rb') as file:
-        img_test = file.read()
-        bytes_test = bytearray(img_test)
-
-    # process forms and tables using image bytes
-    response = client.analyze_document(Document={'Bytes': bytes_test}, FeatureTypes=['FORMS', 'TABLES'])
-
-    # get the text blocks
-    blocks = response['Blocks']
-
-    # get key and value maps and table blocks
+def get_map(folder):
     key_map = {}
     value_map = {}
     block_map = {}
     table_blocks = []
 
-    for block in blocks:
-        block_id = block['Id']
-        block_map[block_id] = block
-        if block['BlockType'] == "KEY_VALUE_SET":
-            if 'KEY' in block['EntityTypes']:
-                key_map[block_id] = block
-            else:
-                value_map[block_id] = block
-        if block['BlockType'] == "TABLE":
-            table_blocks.append(block)
+    # iterate in each folder
+    for file in os.listdir(folder):    
+        filename = os.path.join(folder, file)
+        print(filename)
+
+        # save aws_access_key_id and aws_secret_access_key from .env
+        key_id = config('aws_access_key_id', default='')
+        access_key = config('aws_secret_access_key', default='')
+
+        # define client for textract
+        client = boto3.client('textract', region_name='us-east-1',aws_access_key_id=key_id, aws_secret_access_key=access_key)
+
+        # open image and convert to image byte
+        with open(filename, 'rb') as file:
+            img_test = file.read()
+            bytes_test = bytearray(img_test)
+
+        # process forms and tables using image bytes
+        response = client.analyze_document(Document={'Bytes': bytes_test}, FeatureTypes=['FORMS', 'TABLES'])
+
+        # get the text blocks
+        blocks = response['Blocks']
+
+        for block in blocks:
+            block_id = block['Id']
+            block_map[block_id] = block
+            if block['BlockType'] == "KEY_VALUE_SET":
+                if 'KEY' in block['EntityTypes']:
+                    key_map[block_id] = block
+                else:
+                    value_map[block_id] = block
+            if block['BlockType'] == "TABLE":
+                table_blocks.append(block)
 
     return key_map, value_map, block_map, table_blocks
 
@@ -122,11 +125,12 @@ def generate_table_csv(table_result, blocks_map, table_index):
         
     csv += '\n\n\n'
     return csv
-    
+
+
 # set up window
 root = Tk()                                         # create tkinter root window
 root.title('AutoExtract MD')
-root.geometry("800x600")                            # set window's h and w
+root.geometry("300x300")                            # set window's h and w
 
 subtitle = Label(root, text="Folder: None")
 subtitle.pack()
@@ -135,37 +139,32 @@ input_dir = askdirectory(title='Select directory for form extraction')
 subtitle.config(text="Folder: " + str(input_dir).split("/")[-1])
 root.update()
 
-# put the filenames into a list
-forms = []
-for filename in os.listdir(input_dir):
-    f = os.path.join(input_dir, filename)
-    if os.path.isfile(f):
-        forms.append(f)    
-
-# create new directory if not existing
-directory = "extracted"
-if not os.path.exists(directory):
-    os.makedirs(directory)
+folders = []
+#save the names of the folder
+for main, dirs, files in os.walk(input_dir):
+    for dir in dirs:
+        # get the full path of the directory
+        dir_path = os.path.join(main, dir)
+        folders.append(dir_path)
 
 # iterate through the list that calls Amazon Textract APIs 
 processed_count = 0
-status_text = "(" + str(processed_count) + "/" + str(len(forms)) + ")"
-status = Label(root, text=status_text)
-status.pack()
 data = {}
 imported_keys = []
 imported_dict = []
 
-for i, form in enumerate(forms):
-    text = "(" + str(processed_count) + "/" + str(len(forms)) + ") " + form.split("/")[-1] + " ongoing"
+processed_count = 0
+status_text = "(" + str(processed_count) + "/" + str(len(folders)) + ")"
+status = Label(root, text=status_text)
+status.pack()
+
+# iterate in each folder
+for i, folder in enumerate(folders):
+    text = "(" + str(processed_count) + "/" + str(len(folders)) + ") " + folder.split("/")[-1] + " ongoing"
     status.config(text=text)
     root.update()
-
-    filename = form.split("\\")[-1].split(".jpg")[0]
-    output_file = directory + "\\" + form.split("\\")[-1].split(".jpg")[0] + "_table.csv"
-        
     # generate kv maps and tables
-    key_map, value_map, block_map, table_blocks = get_map(form)
+    key_map, value_map, block_map, table_blocks = get_map(folder)
 
     # process forms (key-values)
     kvs = get_kv_relationship(key_map, value_map, block_map)
@@ -174,18 +173,7 @@ for i, form in enumerate(forms):
     imported_keys.append(list(kvs.keys()))
     imported_dict.append(dict(kvs))
 
-        # # process tables (table blocks)
-        # csv = ''                                                    # initiate variable to store overall table csv
-        # for index, table in enumerate(table_blocks):                # iterate to each table
-        #     csv += generate_table_csv(table, block_map, index +1)   # generate csv for each table and add to existing
-        #     csv += '\n\n'
-
-        # with open(output_file, "wt") as fout:                       # replace content if existing
-        #     fout.write(csv)
-
     processed_count+=1
-
-    # text segmentation
 
 # get common keys
 flattened_list = [word for sublist in imported_keys for word in sublist]
@@ -202,15 +190,32 @@ for dictionary in imported_dict:
             clean_value = re.sub(r'^\s+|\s+$|,', "", value[0])
             data[key].append(clean_value) # add but clean word
 
+pd.set_option('display.max_columns', None)
 df = pd.DataFrame(data)
-print(df)
 
-text = "(" + str(processed_count) + "/" + str(len(forms)) + ") " + "processed"
+text = "(" + str(processed_count) + "/" + str(len(folders)) + ") " + "processed"
 status.config(text=text)
 root.update()
 
-root.mainloop() 
+root.mainloop()
+
+
+
+
 
 # References:
 # https://docs.aws.amazon.com/textract/latest/dg/examples-export-table-csv.html
 # https://docs.aws.amazon.com/textract/latest/dg/examples-extract-kvp.html
+
+
+# Extra
+        # # process tables (table blocks)
+        # csv = ''                                                    # initiate variable to store overall table csv
+        # for index, table in enumerate(table_blocks):                # iterate to each table
+        #     csv += generate_table_csv(table, block_map, index +1)   # generate csv for each table and add to existing
+        #     csv += '\n\n'
+
+        # with open(output_file, "wt") as fout:                       # replace content if existing
+        #     fout.write(csv)
+
+        #processed_count+=1

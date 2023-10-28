@@ -11,6 +11,7 @@ AutoExtractMD is a program that automatically scans and extract information from
 ## Dependencies
 1. decouple: `pip install decouple`
 2. boto3: `pip install boto3`
+3. tkinter: `pip install tkinter`
 
 ## License
 This project is licensed under the [Creative Commons Attribution-NonCommercial-ShareAlike (CC BY-NC-SA) 4.0 International License](https://creativecommons.org/licenses/by-nc-sa/4.0/).
