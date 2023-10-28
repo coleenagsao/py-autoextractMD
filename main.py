@@ -1,6 +1,7 @@
 import boto3
 import os
 from collections import defaultdict
+from collections import Counter
 from decouple import config     # for .env
 import numpy as np
 from tkinter import Tk
@@ -104,12 +105,7 @@ def generate_form_csv(keys, values, form, directory):
 
     data = np.array([p for p in zip(keys, values)], dtype=object)
     np.savetxt(filename, data, delimiter=',', fmt='%s')
-
-def generate_form_csv1(kvs, form, directory): 
-    keys = list(kvs.keys())
-    values = list(kvs.values())
-
-    
+   
 def generate_table_csv(table_result, blocks_map, table_index):
     rows = get_rows_columns_map(table_result, blocks_map)
 
@@ -156,41 +152,27 @@ processed_count = 0
 status_text = "(" + str(processed_count) + "/" + str(len(forms)) + ")"
 status = Label(root, text=status_text)
 status.pack()
+data = {}
+imported_keys = []
+imported_dict = []
 
 for i, form in enumerate(forms):
-    if i == 0:
-        text = "(" + str(processed_count) + "/" + str(len(forms)) + ") " + form.split("/")[-1] + " ongoing"
-        status.config(text=text)
-        root.update()
+    text = "(" + str(processed_count) + "/" + str(len(forms)) + ") " + form.split("/")[-1] + " ongoing"
+    status.config(text=text)
+    root.update()
 
-        filename = form.split("\\")[-1].split(".jpg")[0]
-        output_file = directory + "\\" + form.split("\\")[-1].split(".jpg")[0] + "_table.csv"
+    filename = form.split("\\")[-1].split(".jpg")[0]
+    output_file = directory + "\\" + form.split("\\")[-1].split(".jpg")[0] + "_table.csv"
         
-        # generate kv maps and tables
-        key_map, value_map, block_map, table_blocks = get_map(form)
+    # generate kv maps and tables
+    key_map, value_map, block_map, table_blocks = get_map(form)
 
-        # process forms (key-values)
-        kvs = get_kv_relationship(key_map, value_map, block_map)
-                
-        # clean values from extra comma and leading and trailing spaces
-        values = list(kvs.values())
-        for i, value in enumerate(values):
-            values[i] = re.sub(r'^\s+|\s+$|,', "", value[0])
+    # process forms (key-values)
+    kvs = get_kv_relationship(key_map, value_map, block_map)
 
-        # clean keys from colon, leading and trailing spaces
-        keys = list(kvs.keys())
-        for i, key in enumerate(keys):
-            keys[i] = re.sub(r':|^\s+|\s+$|,', "", key)
-
-        # create dictionary
-        # dictionary = {k: v for k, v in zip(keys, values)}
-        # print(dictionary)
-
-        generate_form_csv(keys, values, form, directory)
-        print("[DONE - Forms] " + filename)
-
-        # print("[DONE - Tables] " + filename)
-
+    # save keys
+    imported_keys.append(list(kvs.keys()))
+    imported_dict.append(dict(kvs))
 
         # # process tables (table blocks)
         # csv = ''                                                    # initiate variable to store overall table csv
@@ -201,12 +183,27 @@ for i, form in enumerate(forms):
         # with open(output_file, "wt") as fout:                       # replace content if existing
         #     fout.write(csv)
 
-        
-
-        # processed_count+=1
+    processed_count+=1
 
     # text segmentation
 
+# get common keys
+flattened_list = [word for sublist in imported_keys for word in sublist]
+word_set = set(flattened_list)
+common_words = set.intersection(*map(set, imported_keys))
+
+# create a dictionary out of the common words
+data = {key: [] for key in common_words}
+
+# fill out the dictionary from the forms
+for dictionary in imported_dict:
+    for key, value in dictionary.items():
+        if key in data:
+            clean_value = re.sub(r'^\s+|\s+$|,', "", value[0])
+            data[key].append(clean_value) # add but clean word
+
+df = pd.DataFrame(data)
+print(df)
 
 text = "(" + str(processed_count) + "/" + str(len(forms)) + ") " + "processed"
 status.config(text=text)
