@@ -7,6 +7,8 @@ from tkinter import Tk
 from tkinter import StringVar
 from tkinter.filedialog import askdirectory
 from tkinter.ttk import Label
+import pandas as pd
+import re
 
 def get_map(file_name):
     # add status indicator for processing
@@ -97,13 +99,16 @@ def get_rows_columns_map(table_result, blocks_map):
                     rows[row_index][col_index] = get_text(cell, blocks_map)
     return rows
 
-def generate_form_csv(kvs, form, directory): 
-    keys = list(kvs.keys())
-    values = list(kvs.values())
+def generate_form_csv(keys, values, form, directory):     
     filename = directory + "\\" + form.split("\\")[-1].split(".jpg")[0] + "_form.csv"
 
     data = np.array([p for p in zip(keys, values)], dtype=object)
     np.savetxt(filename, data, delimiter=',', fmt='%s')
+
+def generate_form_csv1(kvs, form, directory): 
+    keys = list(kvs.keys())
+    values = list(kvs.values())
+
     
 def generate_table_csv(table_result, blocks_map, table_index):
     rows = get_rows_columns_map(table_result, blocks_map)
@@ -153,34 +158,54 @@ status = Label(root, text=status_text)
 status.pack()
 
 for i, form in enumerate(forms):
-    text = "(" + str(processed_count) + "/" + str(len(forms)) + ") " + form.split("/")[-1] + " ongoing"
-    status.config(text=text)
-    root.update()
+    if i == 0:
+        text = "(" + str(processed_count) + "/" + str(len(forms)) + ") " + form.split("/")[-1] + " ongoing"
+        status.config(text=text)
+        root.update()
+
+        filename = form.split("\\")[-1].split(".jpg")[0]
+        output_file = directory + "\\" + form.split("\\")[-1].split(".jpg")[0] + "_table.csv"
+        
+        # generate kv maps and tables
+        key_map, value_map, block_map, table_blocks = get_map(form)
+
+        # process forms (key-values)
+        kvs = get_kv_relationship(key_map, value_map, block_map)
+                
+        # clean values from extra comma and leading and trailing spaces
+        values = list(kvs.values())
+        for i, value in enumerate(values):
+            values[i] = re.sub(r'^\s+|\s+$|,', "", value[0])
+
+        # clean keys from colon, leading and trailing spaces
+        keys = list(kvs.keys())
+        for i, key in enumerate(keys):
+            keys[i] = re.sub(r':|^\s+|\s+$|,', "", key)
+
+        # create dictionary
+        # dictionary = {k: v for k, v in zip(keys, values)}
+        # print(dictionary)
+
+        generate_form_csv(keys, values, form, directory)
+        print("[DONE - Forms] " + filename)
+
+        # print("[DONE - Tables] " + filename)
 
 
-    filename = form.split("\\")[-1].split(".jpg")[0]
-    output_file = directory + "\\" + form.split("\\")[-1].split(".jpg")[0] + "_table.csv"
-    
-    # generate kv maps and tables
-    key_map, value_map, block_map, table_blocks = get_map(form)
+        # # process tables (table blocks)
+        # csv = ''                                                    # initiate variable to store overall table csv
+        # for index, table in enumerate(table_blocks):                # iterate to each table
+        #     csv += generate_table_csv(table, block_map, index +1)   # generate csv for each table and add to existing
+        #     csv += '\n\n'
 
-    # process forms (key-values)
-    kvs = get_kv_relationship(key_map, value_map, block_map)
-    generate_form_csv(kvs, form, directory)
-    print("[DONE - Forms] " + filename)
+        # with open(output_file, "wt") as fout:                       # replace content if existing
+        #     fout.write(csv)
 
-    # process tables (table blocks)
-    csv = ''                                                    # initiate variable to store overall table csv
-    for index, table in enumerate(table_blocks):                # iterate to each table
-        csv += generate_table_csv(table, block_map, index +1)   # generate csv for each table and add to existing
-        csv += '\n\n'
+        
 
-    with open(output_file, "wt") as fout:                       # replace content if existing
-        fout.write(csv)
+        # processed_count+=1
 
-    print("[DONE - Tables] " + filename)
-
-    processed_count+=1
+    # text segmentation
 
 
 text = "(" + str(processed_count) + "/" + str(len(forms)) + ") " + "processed"
