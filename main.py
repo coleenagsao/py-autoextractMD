@@ -9,9 +9,9 @@ import pandas as pd
 import re
 from IPython.display import display, HTML
 
-from tkinter import Tk
+from tkinter import Tk, ttk, messagebox
 from tkinter.filedialog import askdirectory
-from tkinter.ttk import Label
+from tkinter.ttk import Label, LabelFrame, Scrollbar
 
 def get_map(folder):
     key_map = {}
@@ -126,14 +126,37 @@ def generate_table_csv(table_result, blocks_map, table_index):
     csv += '\n\n\n'
     return csv
 
+def clear_data():
+    tv1.delete(*tv1.get_children())
+    return None
 
 # set up window
 root = Tk()                                         # create tkinter root window
 root.title('AutoExtract MD')
-root.geometry("300x300")                            # set window's h and w
+root.geometry("700x600") 
+root.pack_propagate(False)                          # set window's h and w
+
+frame1 = LabelFrame(root, text="Data")
+frame1.place(height=270, width=700)
+
+file_frame = LabelFrame(root, text="Status Indicator")
+file_frame.place(height=100, width=700, rely=0.5, relx=0)
+
+analysis_frame = LabelFrame(root, text="Analysis")
+analysis_frame.place(height=150, width=700, rely=0.70, relx=0)
+
+## Treeview Widget
+tv1 = ttk.Treeview(frame1)
+tv1.place(relheight=1, relwidth=1) # set the height and width of the widget to 100% of its container (frame1).
+
+treescrolly = Scrollbar(frame1, orient="vertical", command=tv1.yview) # command means update the yaxis view of the widget
+treescrollx = Scrollbar(frame1, orient="horizontal", command=tv1.xview) # command means update the xaxis view of the widget
+tv1.configure(xscrollcommand=treescrollx.set, yscrollcommand=treescrolly.set) # assign the scrollbars to the Treeview Widget
+treescrollx.pack(side="bottom", fill="x") # make the scrollbar fill the x axis of the Treeview widget
+treescrolly.pack(side="right", fill="y") # make the scrollbar fill the y axis of the Treeview widget
 
 subtitle = Label(root, text="Folder: None")
-subtitle.pack()
+subtitle.place(rely=0.55, relx=0.05)
 
 input_dir = askdirectory(title='Select directory for form extraction') 
 subtitle.config(text="Folder: " + str(input_dir).split("/")[-1])
@@ -156,7 +179,7 @@ imported_dict = []
 processed_count = 0
 status_text = "(" + str(processed_count) + "/" + str(len(folders)) + ")"
 status = Label(root, text=status_text)
-status.pack()
+status.place(rely=0.6, relx=0.05)
 
 # iterate in each folder
 for i, folder in enumerate(folders):
@@ -197,15 +220,25 @@ text = "(" + str(processed_count) + "/" + str(len(folders)) + ") " + "processed"
 status.config(text=text)
 root.update()
 
+display(df)
+
+clear_data()
+
+tv1["column"] = list(df.columns)
+tv1["show"] = "headings"
+for column in tv1["columns"]:
+    tv1.heading(column, text=column) # let the column heading = column name
+df_rows = df.to_numpy().tolist() # turns the dataframe into a list of lists
+for row in df_rows:
+    tv1.insert("", "end", values=row)
+
 root.mainloop()
-
-
-
 
 
 # References:
 # https://docs.aws.amazon.com/textract/latest/dg/examples-export-table-csv.html
 # https://docs.aws.amazon.com/textract/latest/dg/examples-extract-kvp.html
+# https://gist.github.com/RamonWill/0686bd8c793e2e755761a8f20a42c762
 
 
 # Extra
