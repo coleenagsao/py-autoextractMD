@@ -1,17 +1,17 @@
 import boto3
 from decouple import config     # for .env
-
 import os
 from collections import defaultdict
 from collections import Counter
 import numpy as np
 import pandas as pd
 import re
-from IPython.display import display, HTML
-
-from tkinter import Tk, ttk, messagebox
+from IPython.display import display
+from tkinter import Tk, ttk
 from tkinter.filedialog import askdirectory
 from tkinter.ttk import Label, LabelFrame, Scrollbar
+
+from cryptography.fernet import Fernet  #for encrypting health data
 
 def get_map(folder):
     key_map = {}
@@ -89,6 +89,18 @@ def find_value_block(key_block, value_map):
 def clear_data():
     tv1.delete(*tv1.get_children())
     return None
+
+def encrypt_data(filename):
+    key = Fernet.generate_key()
+
+    with open(filename, 'rb') as file:
+        data = file.read()
+    
+    cipher_suite = Fernet(key)
+    encrypted_data = cipher_suite.encrypt(data)
+
+    with open(filename, 'wb') as file:
+        file.write(encrypted_data)
 
 # set up window
 root = Tk()                                         # create tkinter root window
@@ -181,10 +193,8 @@ text = "(" + str(processed_count) + "/" + str(len(folders)) + ") " + "processed"
 status.config(text=text)
 root.update()
 
-display(df)
-
+# display in GUI
 clear_data()
-
 tv1["column"] = list(df.columns)
 tv1["show"] = "headings"
 for column in tv1["columns"]:
@@ -192,6 +202,11 @@ for column in tv1["columns"]:
 df_rows = df.to_numpy().tolist() # turns the dataframe into a list of lists
 for row in df_rows:
     tv1.insert("", "end", values=row)
+
+# save the data frame to a csv file and encrypt
+filename = str(input_dir).split("/")[-1] + '.csv'
+df.to_csv(filename, index=False)
+encrypt_data(filename)
 
 root.mainloop()
 
@@ -203,13 +218,11 @@ root.mainloop()
 
 
 # Extra
-        # # process tables (table blocks)
-        # csv = ''                                                    # initiate variable to store overall table csv
-        # for index, table in enumerate(table_blocks):                # iterate to each table
-        #     csv += generate_table_csv(table, block_map, index +1)   # generate csv for each table and add to existing
-        #     csv += '\n\n'
+    # process tables (table blocks)
+    # csv = ''                                                    # initiate variable to store overall table csv
+    # for index, table in enumerate(table_blocks):                # iterate to each table
+    #     csv += generate_table_csv(table, block_map, index +1)   # generate csv for each table and add to existing
+    #     csv += '\n\n'
 
-        # with open(output_file, "wt") as fout:                       # replace content if existing
-        #     fout.write(csv)
-
-        #processed_count+=1
+    # with open(output_file, "wt") as fout:                       # replace content if existing
+    #     fout.write(csv)
