@@ -6,10 +6,13 @@ from collections import Counter
 import numpy as np
 import pandas as pd
 import re
+from pandasgui import show 
 from IPython.display import display
 from tkinter import Tk, ttk
 from tkinter.filedialog import askdirectory
 from tkinter.ttk import Label, LabelFrame, Scrollbar
+from tkinter import *
+import matplotlib.pyplot as plt
 
 from cryptography.fernet import Fernet  #for encrypting health data
 
@@ -102,6 +105,14 @@ def encrypt_data(filename):
     with open(filename, 'wb') as file:
         file.write(encrypted_data)
 
+def display_visualization():
+    plt.clf()
+    counts = df[variable.get()].value_counts()
+    print(counts)
+    counts.plot.pie(autopct='%1.1f%%')
+    plt.axis('equal')
+    plt.show()
+
 # set up window
 root = Tk()                                         # create tkinter root window
 root.title('AutoExtractMD')
@@ -115,7 +126,7 @@ frame1.place(height=270, width=700)
 file_frame = LabelFrame(root, text="Status Indicator")
 file_frame.place(height=100, width=700, rely=0.5, relx=0)
 
-analysis_frame = LabelFrame(root, text="Analysis")
+analysis_frame = LabelFrame(root, text="Visualization Options")
 analysis_frame.place(height=150, width=700, rely=0.70, relx=0)
 
 ## Treeview Widget
@@ -184,11 +195,11 @@ for dictionary in imported_dict:
     for key, value in dictionary.items():
         if key in data:
             clean_value = re.sub(r'^\s+|\s+$|,', "", value[0])
-            data[key].append(clean_value) # add but clean word
+            data[key].append(clean_value.upper()) # add but uppercased clean word
 
 pd.set_option('display.max_columns', None)
-df = pd.DataFrame(data)
 
+df = pd.DataFrame(data)
 text = "(" + str(processed_count) + "/" + str(len(folders)) + ") " + "processed"
 status.config(text=text)
 root.update()
@@ -208,21 +219,26 @@ filename = str(input_dir).split("/")[-1] + '.csv'
 df.to_csv(filename, index=False)
 encrypt_data(filename)
 
-root.mainloop()
+# update analysis 
+visopt = Label(root, text="Choose variable: ")
+visopt.place(rely=0.75, relx=0.05)
 
+options = list(data.keys())
+
+variable = StringVar(root)
+variable.set(options[0])                    # default value
+w = OptionMenu(root, variable, *options)
+w.pack()
+
+w.place(rely=0.74, relx=0.22)
+root.update()
+
+button = Button(root, text="Click here to generate.", command=display_visualization)
+button.place(rely=0.81, relx=0.05)
+
+root.mainloop()
 
 # References:
 # https://docs.aws.amazon.com/textract/latest/dg/examples-export-table-csv.html
 # https://docs.aws.amazon.com/textract/latest/dg/examples-extract-kvp.html
 # https://gist.github.com/RamonWill/0686bd8c793e2e755761a8f20a42c762
-
-
-# Extra
-    # process tables (table blocks)
-    # csv = ''                                                    # initiate variable to store overall table csv
-    # for index, table in enumerate(table_blocks):                # iterate to each table
-    #     csv += generate_table_csv(table, block_map, index +1)   # generate csv for each table and add to existing
-    #     csv += '\n\n'
-
-    # with open(output_file, "wt") as fout:                       # replace content if existing
-    #     fout.write(csv)
