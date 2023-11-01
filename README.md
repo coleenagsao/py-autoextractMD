@@ -26,6 +26,10 @@ AutoExtractMD is a program powered by Amazon Textract, Tkinter, and Pypandas tha
 │   ├── file22.jpg
 │   └── file23.jpg
 ```
+# GUI
+A simple GUI is implemented for easy viewing.
+
+![GUI V1](screenshots/v1.png)
 
 ## License
 This project is licensed under the [Creative Commons Attribution-NonCommercial-ShareAlike (CC BY-NC-SA) 4.0 International License](https://creativecommons.org/licenses/by-nc-sa/4.0/).
