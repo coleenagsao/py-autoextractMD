@@ -1,3 +1,6 @@
+# AutoExtractMD
+# Author: Coleen Therese A. Agsao
+
 import boto3                                # for Amazon Textract API
 from decouple import config                 # for reading credentials in .env
 import os                                   # for reading directories 
@@ -16,6 +19,8 @@ from tkinter.filedialog import askdirectory
 
 # modules for encryption
 from cryptography.fernet import Fernet 
+
+from pandasgui import show
 
 # function that given a folder, it iterates to all the files inside and returns the keys, values, blocks
 def get_map(folder):
