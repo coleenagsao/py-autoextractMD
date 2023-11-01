@@ -26,6 +26,11 @@ AutoExtractMD is a program powered by Amazon Textract, Tkinter, and Pypandas tha
 │   ├── file22.jpg
 │   └── file23.jpg
 ```
+3. Generate your own access keys from AWS. Save them in a .env file.
+```
+aws_access_key_id=''
+aws_secret_access_key=''
+```
 # GUI
 A simple GUI is implemented for easy viewing.
 
